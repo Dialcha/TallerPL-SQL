@@ -17,14 +17,12 @@ INSERT INTO climaexistente VALUES('Colombia','Nariño','Templado');
 INSERT INTO climaexistente VALUES('Colombia','Nariño','Glacial');
 
 
-
--- Consulta original
-SELECT c1.pais, c1.dpto, c2.clima
-FROM climaexistente c1, climaexistente c2
-MINUS
-SELECT *
-FROM climaexistente
-ORDER BY 1,2,3;
+-- Creación de la tabla auxiliar climaexistentecopia
+CREATE TABLE climaexistentecopia(
+ pais VARCHAR2(15),
+ dpto VARCHAR2(15),
+ clima VARCHAR2(15)
+);
 
 -- Bloque PL/SQL
 DECLARE
@@ -37,20 +35,29 @@ DECLARE
     cursor c3 is select * from climaexistente;
 BEGIN
     w_check_igual := 0;
-    for clim in c1 loop
-        w_clima := clim.clima;
-        for elemento in c2 loop
+    for clim in c1 loop -- En este cursor se captura el clima (c1 clima)
+        w_clima := clim.clima; 
+        for elemento in c2 loop -- En este cursor se capturan el país y el departamento y se combinan con el clima que haya en la iteración
             w_pais := elemento.pais;
             w_dpto := elemento.dpto;
-            for elemen in c3 loop
+            for elemen in c3 loop -- Este cursor se declaró para ver si esa combinación de clima con ciudad y país existe
                 if(elemen.pais || elemen.dpto || elemen.clima = w_pais || w_dpto || w_clima)then
                     w_check_igual := 1;
                 end if;
             end loop;
             if w_check_igual = 0 then
-                dbms_output.put_line(w_pais || w_dpto || w_clima);
+                INSERT INTO climaexistentecopia VALUES (w_pais, w_dpto, w_clima);
             end if;
             w_check_igual := 0;
         end loop;
     end loop;
+    DELETE FROM climaexistentecopia
+        WHERE rowid not in
+       (SELECT MIN(rowid)
+          FROM climaexistentecopia
+         GROUP BY pais, dpto, clima);
+    execute immediate 'select * from climaexistentecopia order by 1, 2, 3';
 END;
+
+
+drop table climaexistentecopia;
